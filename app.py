@@ -345,29 +345,26 @@ if auto_blue_header_row is not None:
                     make_auto_blue(row, col)
                     auto_blue_new_condition_rows.add(row)
 
-    # %Chg.1 < 0
-    col = find_auto_blue_col("%chg.1")
-    if col:
-        for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
-            number = get_number(auto_blue_ws.cell(row, col).value)
-            if number is not None and number < 0:
-                make_auto_blue(row, col)
+    # %Chg.1, %Chg.2 and %Chg.3 — ALL THREE must be < 0
+    # This is one combined AutoBlue condition.
+    pct1_col = find_auto_blue_col("%chg.1")
+    pct2_col = find_auto_blue_col("%chg.2")
+    pct3_col = find_auto_blue_col("%chg.3")
 
-    # %Chg.2 < 0
-    col = find_auto_blue_col("%chg.2")
-    if col:
+    if pct1_col and pct2_col and pct3_col:
         for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
-            number = get_number(auto_blue_ws.cell(row, col).value)
-            if number is not None and number < 0:
-                make_auto_blue(row, col)
+            pct1 = get_number(auto_blue_ws.cell(row, pct1_col).value)
+            pct2 = get_number(auto_blue_ws.cell(row, pct2_col).value)
+            pct3 = get_number(auto_blue_ws.cell(row, pct3_col).value)
 
-    # %Chg.3 < 0
-    col = find_auto_blue_col("%chg.3")
-    if col:
-        for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
-            number = get_number(auto_blue_ws.cell(row, col).value)
-            if number is not None and number < 0:
-                make_auto_blue(row, col)
+            if (
+                pct1 is not None and pct1 < 0
+                and pct2 is not None and pct2 < 0
+                and pct3 is not None and pct3 < 0
+            ):
+                make_auto_blue(row, pct1_col)
+                make_auto_blue(row, pct2_col)
+                make_auto_blue(row, pct3_col)
                 auto_blue_new_condition_rows.add(row)
 
     # Only stocks triggered by the newly changed AutoBlue conditions
