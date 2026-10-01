@@ -236,7 +236,7 @@ for row in range(1, auto_blue_ws.max_row + 1):
 if auto_blue_header_row is not None:
 
     auto_blue_fill = PatternFill(fill_type="solid", fgColor="ADD8E6")
-    auto_blue_new_stock_fill = PatternFill(fill_type="solid", fgColor="5B9BD5")
+    auto_blue_new_stock_fill = PatternFill(fill_type="solid", fgColor="B4C6E7")
     auto_blue_condition_counts = {}
     auto_blue_new_match_rows = set()
 
