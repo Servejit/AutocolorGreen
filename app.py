@@ -929,4 +929,555 @@ st.download_button(
     data=output_buffer.getvalue(),
     file_name="6thsenseVardaanAutocolor.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)    # Column A:
+    # Dark blue ONLY when:
+    # 1) the stock matches at least one NEW AutoBlue condition, AND
+    # 2) it has the maximum number of matched AutoBlue condition cells
+    #    among those NEW-condition matching stocks.
+    #
+    # Stocks that do not match any NEW condition receive NO AutoBlue
+    # Column A colour, even if they match an older/persistent condition.
+    new_matching_rows = [
+        row for row in auto_blue_new_condition_rows
+        if row in auto_blue_matched_rows
+    ]
+    max_new_count = max(
+        (auto_blue_condition_counts.get(row, 0) for row in new_matching_rows),
+        default=0
+    )
+
+    for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
+        if (
+            row in new_matching_rows
+            and auto_blue_condition_counts.get(row, 0) == max_new_count
+        ):
+            auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
+        else:
+            # Explicitly remove any fill from Column A for every other stock.
+            auto_blue_ws.cell(row, 1).fill = PatternFill(fill_type=None)
+
+
+    auto_blue_ws.auto_filter.ref = (
+        f"A{auto_blue_header_row}:"
+        f"{openpyxl.utils.get_column_letter(auto_blue_ws.max_column)}"
+        f"{auto_blue_ws.max_row}"
+    )
+    auto_blue_ws.freeze_panes = f"A{auto_blue_header_row + 1}"
+
+
+# ============================================================
+# BLUE FILL
+# ============================================================
+
+blue_fill = PatternFill(
+    fill_type="solid",
+    fgColor="ADD8E6"
+)
+
+blue_cells = set()
+
+
+def make_blue(row, col):
+
+    out_ws.cell(row, col).fill = copy(blue_fill)
+
+    blue_cells.add((row, col))
+
+    # Corresponding Column A
+    out_ws.cell(row, 1).fill = copy(blue_fill)
+
+
+# ============================================================
+# FIND HEADINGS
+# ============================================================
+
+headings = {}
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading:
+        headings[heading] = col
+
+
+# ============================================================
+# RULE 1
+# Sum I < -4
+# ============================================================
+
+sum_i_col = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "sum i":
+        sum_i_col = col
+        break
+
+
+if sum_i_col:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, sum_i_col).value
+        )
+
+        if number is not None and number < -4:
+            make_blue(row, sum_i_col)
+
+
+# ============================================================
+# RULE 2
+# 16> C-B / Avg.4
+# Parentheses value < 0.50
+# ============================================================
+
+col_c = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "16> c-b / avg.4":
+        col_c = col
+        break
+
+
+if col_c:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        value = get_parentheses_number(
+            out_ws.cell(row, col_c).value
+        )
+
+        if value is not None and value < 0.50:
+            make_blue(row, col_c)
+
+
+# ============================================================
+# RULE 3
+# 16< D-B / Avg.4
+#
+# Parentheses value < -1
+# AND
+# Parentheses value < number immediately after 16<
+# ============================================================
+
+col_d = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "16< d-b / avg.4":
+        col_d = col
+        break
+
+
+if col_d:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        cell_value = out_ws.cell(row, col_d).value
+
+        if cell_value is None:
+            continue
+
+        text = str(cell_value)
+
+        first_match = re.search(
+            r"16<\s*([-+]?\d+(?:\.\d+)?)",
+            text,
+            re.IGNORECASE
+        )
+
+        parent_value = get_parentheses_number(
+            cell_value
+        )
+
+        if first_match and parent_value is not None:
+
+            try:
+                changing_value = float(
+                    first_match.group(1)
+                )
+            except:
+                continue
+
+            if (
+                parent_value < -1
+                and parent_value < changing_value
+            ):
+                make_blue(row, col_d)
+
+
+# ============================================================
+# RULE 4
+# Sum O2H.10
+#
+# Values strictly below average
+# ============================================================
+
+sum_o2h_col = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "sum o2h.10":
+        sum_o2h_col = col
+        break
+
+
+if sum_o2h_col:
+
+    values = []
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, sum_o2h_col).value
+        )
+
+        if number is not None:
+            values.append(number)
+
+    if values:
+
+        average_value = sum(values) / len(values)
+
+        for row in range(header_row + 1, out_ws.max_row + 1):
+
+            number = get_number(
+                out_ws.cell(row, sum_o2h_col).value
+            )
+
+            if number is not None and number < average_value:
+                make_blue(row, sum_o2h_col)
+
+
+# ============================================================
+# RULE 5
+# Sum O2L.10
+#
+# Values strictly below average
+# ============================================================
+
+sum_o2l_col = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "sum o2l.10":
+        sum_o2l_col = col
+        break
+
+
+if sum_o2l_col:
+
+    values = []
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, sum_o2l_col).value
+        )
+
+        if number is not None:
+            values.append(number)
+
+    if values:
+
+        average_value = sum(values) / len(values)
+
+        for row in range(header_row + 1, out_ws.max_row + 1):
+
+            number = get_number(
+                out_ws.cell(row, sum_o2l_col).value
+            )
+
+            if number is not None and number < average_value:
+                make_blue(row, sum_o2l_col)
+
+
+# ============================================================
+# RULE 6
+# FIRST TWO DATED O2L COLUMNS
+# Excluding Sum O2L.10
+# Value < -1
+# ============================================================
+
+dated_o2l_columns = []
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if (
+        "o2l" in heading
+        and heading != "sum o2l.10"
+    ):
+        dated_o2l_columns.append(col)
+
+
+for col in dated_o2l_columns[:2]:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, col).value
+        )
+
+        if number is not None and number < -1:
+            make_blue(row, col)
+
+
+# ============================================================
+# RULE 7
+# 10 "-ve"
+#
+# Example:
+# 2+1,2,3,4,6
+#
+# Check ONLY first number before +
+# ============================================================
+
+negative_col = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == '10 "-ve"':
+        negative_col = col
+        break
+
+
+if negative_col:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        value = out_ws.cell(row, negative_col).value
+
+        if value is None:
+            continue
+
+        text = str(value).strip()
+
+        match = re.match(
+            r"\s*(\d+)\s*\+",
+            text
+        )
+
+        if match:
+
+            try:
+                first_number = int(match.group(1))
+            except:
+                continue
+
+            if first_number > 1:
+                make_blue(row, negative_col)
+
+
+# ============================================================
+# RULE 8
+# %Chg.1 < 0
+# ============================================================
+
+pct1_col = None
+
+for col in range(1, out_ws.max_column + 1):
+    heading = clean_text(out_ws.cell(header_row, col).value)
+    if heading == "%chg.1":
+        pct1_col = col
+        break
+
+
+if pct1_col:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, pct1_col).value
+        )
+
+        if number is not None and number < 0:
+            make_blue(row, pct1_col)
+
+
+# ============================================================
+# RULE 9
+# %Chg.2 < 0
+# ============================================================
+
+pct2_col = None
+
+for col in range(1, out_ws.max_column + 1):
+
+    heading = clean_text(
+        out_ws.cell(header_row, col).value
+    )
+
+    if heading == "%chg.2":
+        pct2_col = col
+        break
+
+
+if pct2_col:
+
+    for row in range(header_row + 1, out_ws.max_row + 1):
+
+        number = get_number(
+            out_ws.cell(row, pct2_col).value
+        )
+
+        if number is not None and number < 0:
+            make_blue(row, pct2_col)
+
+
+# ============================================================
+# COUNT BLUE CELLS PER ROW
+#
+# Column A is NOT counted.
+# ============================================================
+
+row_blue_counts = {}
+
+for row in range(header_row + 1, out_ws.max_row + 1):
+
+    count = sum(
+        1
+        for r, c in blue_cells
+        if r == row and c != 1
+    )
+
+    row_blue_counts[row] = count
+
+
+# ============================================================
+# THREE GREEN LEVELS
+#
+# Highest unique blue count = DARK GREEN
+# Second highest = GREEN
+# Third highest = LIGHT GREEN
+#
+# Only rows with >= 8 blue cells qualify.
+# Only Column A receives green.
+# ============================================================
+
+dark_green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="548235"
+)
+
+green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="70AD47"
+)
+
+light_green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="90EE90"
+)
+
+
+eligible_counts = sorted(
+    {
+        count
+        for count in row_blue_counts.values()
+        if count >= 8
+    },
+    reverse=True
+)
+
+
+green_counts = eligible_counts[:3]
+
+
+for row, count in row_blue_counts.items():
+
+    if count < 8:
+        continue
+
+    if len(green_counts) >= 1 and count == green_counts[0]:
+
+        out_ws.cell(row, 1).fill = copy(
+            dark_green_fill
+        )
+
+    elif len(green_counts) >= 2 and count == green_counts[1]:
+
+        out_ws.cell(row, 1).fill = copy(
+            green_fill
+        )
+
+    elif len(green_counts) >= 3 and count == green_counts[2]:
+
+        out_ws.cell(row, 1).fill = copy(
+            light_green_fill
+        )
+
+
+# ============================================================
+# AUTOFILTER
+# ============================================================
+
+out_ws.auto_filter.ref = (
+    f"A{header_row}:"
+    f"{openpyxl.utils.get_column_letter(out_ws.max_column)}"
+    f"{out_ws.max_row}"
+)
+
+
+# ============================================================
+# FREEZE HEADER
+# ============================================================
+
+out_ws.freeze_panes = f"A{header_row + 1}"
+
+
+# ============================================================
+# SAVE TO MEMORY
+# ============================================================
+
+output_buffer = io.BytesIO()
+
+out_wb.save(output_buffer)
+
+output_buffer.seek(0)
+
+
+# ============================================================
+# DOWNLOAD
+# ============================================================
+
+st.success("Excel file processed successfully.")
+
+st.download_button(
+    label="Download 6thsenseVardaanAutocolor.xlsx",
+    data=output_buffer.getvalue(),
+    file_name="6thsenseVardaanAutocolor.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
