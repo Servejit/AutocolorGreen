@@ -125,7 +125,7 @@ format_ws = format_wb["summary"]
 out_wb = Workbook()
 
 out_ws = out_wb.active
-out_ws.title = "AutoGreen"
+out_ws.title = "AutoColorGreen"
 
 
 # ============================================================
@@ -553,12 +553,8 @@ if negative_col:
 
 pct1_col = None
 
-for col in range(1, out_ws.max_column + 1):
-
-    heading = clean_text(
-        out_ws.cell(header_row, col).value
-    )
-
+for col in range(1, out_ws.max_max_column + 1):
+    heading = clean_text(out_ws.cell(header_row, col).value)
     if heading == "%chg.1":
         pct1_col = col
         break
