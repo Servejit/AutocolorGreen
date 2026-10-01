@@ -274,7 +274,7 @@ if auto_blue_header_row is not None:
             if cell_value is None:
                 continue
             text = str(cell_value)
-            first_match = re.search(r"16<\\s*([-+]?\\d+(?:\\.\\d+)?)", text, re.IGNORECASE)
+            first_match = re.search(r"16<\s*([-+]?\d+(?:\.\d+)?)", text, re.IGNORECASE)
             parent_value = get_parentheses_number(cell_value)
             if first_match and parent_value is not None:
                 try:
@@ -335,7 +335,7 @@ if auto_blue_header_row is not None:
             value = auto_blue_ws.cell(row, col).value
             if value is None:
                 continue
-            match = re.match(r"\\s*(\\d+)\\s*\\+", str(value).strip())
+            match = re.match(r"\s*(\d+)\s*\+", str(value).strip())
             if match:
                 try:
                     first_number = int(match.group(1))
