@@ -125,7 +125,7 @@ format_ws = format_wb["summary"]
 out_wb = Workbook()
 
 out_ws = out_wb.active
-out_ws.title = "AutoColorGreen"
+out_ws.title = "AutoGreen"
 
 
 # ============================================================
