@@ -256,6 +256,9 @@ if auto_blue_header_row is not None:
         else:
             auto_blue_ws.cell(row, 1).fill = copy(auto_blue_stock_fill)
 
+    def count_auto_blue_condition(row):
+        auto_blue_condition_counts[row] = auto_blue_condition_counts.get(row, 0) + 1
+
     def normalize_auto_blue_heading(value):
         text = clean_text(value)
         return re.sub(r"[^a-z0-9]+", "", text)
@@ -356,6 +359,19 @@ if auto_blue_header_row is not None:
                     count_auto_blue_condition(row)
                 auto_blue_new_condition_rows.add(row)
 
+
+    # NEW CONDITION 2: 10 "-ve" — first number before + must be > 3
+    negative_col = find_auto_blue_col('10 "-ve"')
+    if negative_col:
+        for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
+            value = auto_blue_ws.cell(row, negative_col).value
+            if value is None:
+                continue
+            match = re.match(r"^\s*(\d+)\s*\+", str(value).strip())
+            if match and int(match.group(1)) > 3:
+                make_auto_blue(row, negative_col)
+                count_auto_blue_condition(row)
+                auto_blue_new_condition_rows.add(row)
 
     # NEW CONDITION 3: %Chg.1, %Chg.2 and %Chg.3 must ALL be < 0
     pct1_col = find_auto_blue_col("%chg.1")
