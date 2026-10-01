@@ -241,8 +241,16 @@ if auto_blue_header_row is not None:
     auto_blue_new_condition_rows = set()
 
     def make_auto_blue(row, col):
+        # Matching condition cell only.
         auto_blue_ws.cell(row, col).fill = copy(auto_blue_fill)
-        auto_blue_ws.cell(row, 1).fill = copy(auto_blue_stock_fill)
+
+    def mark_auto_blue_stock(row, new_condition=False):
+        # Column A is coloured only when this stock actually matches
+        # at least one AutoBlue condition.
+        if new_condition:
+            auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
+        else:
+            auto_blue_ws.cell(row, 1).fill = copy(auto_blue_stock_fill)
 
     def normalize_auto_blue_heading(value):
         text = clean_text(value)
@@ -334,6 +342,7 @@ if auto_blue_header_row is not None:
             number = get_number(auto_blue_ws.cell(row, col).value)
             if number is not None and number < -1.5:
                 make_auto_blue(row, col)
+                mark_auto_blue_stock(row, new_condition=True)
                 auto_blue_new_condition_rows.add(row)
 
     # 10 "-ve" — first number before + > 3
@@ -351,6 +360,7 @@ if auto_blue_header_row is not None:
                 first_number = int(match.group(1))
                 if first_number > 3:
                     make_auto_blue(row, col)
+                    mark_auto_blue_stock(row, new_condition=True)
                     auto_blue_new_condition_rows.add(row)
 
     # %Chg.1, %Chg.2 and %Chg.3 — ALL THREE must be < 0
