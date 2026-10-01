@@ -553,7 +553,7 @@ if negative_col:
 
 pct1_col = None
 
-for col in range(1, out_ws.max_max_column + 1):
+for col in range(1, out_ws.max_column + 1):
     heading = clean_text(out_ws.cell(header_row, col).value)
     if heading == "%chg.1":
         pct1_col = col
