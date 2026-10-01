@@ -236,10 +236,11 @@ for row in range(1, auto_blue_ws.max_row + 1):
 if auto_blue_header_row is not None:
 
     auto_blue_fill = PatternFill(fill_type="solid", fgColor="ADD8E6")
+    auto_blue_stock_fill = PatternFill(fill_type="solid", fgColor="5B9BD5")
 
     def make_auto_blue(row, col):
         auto_blue_ws.cell(row, col).fill = copy(auto_blue_fill)
-        auto_blue_ws.cell(row, 1).fill = copy(auto_blue_fill)
+        auto_blue_ws.cell(row, 1).fill = copy(auto_blue_stock_fill)
 
     def find_auto_blue_col(target_heading):
         for col in range(1, auto_blue_ws.max_column + 1):
