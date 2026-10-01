@@ -244,9 +244,17 @@ if auto_blue_header_row is not None:
         auto_blue_ws.cell(row, col).fill = copy(auto_blue_fill)
         auto_blue_ws.cell(row, 1).fill = copy(auto_blue_stock_fill)
 
+    def normalize_auto_blue_heading(value):
+        text = clean_text(value)
+        return re.sub(r"[^a-z0-9]+", "", text)
+
     def find_auto_blue_col(target_heading):
+        target = normalize_auto_blue_heading(target_heading)
         for col in range(1, auto_blue_ws.max_column + 1):
-            if clean_text(auto_blue_ws.cell(auto_blue_header_row, col).value) == target_heading:
+            heading = normalize_auto_blue_heading(
+                auto_blue_ws.cell(auto_blue_header_row, col).value
+            )
+            if heading == target:
                 return col
         return None
 
@@ -335,12 +343,12 @@ if auto_blue_header_row is not None:
             value = auto_blue_ws.cell(row, col).value
             if value is None:
                 continue
-            match = re.match(r"\s*(\d+)\s*\+", str(value).strip())
+
+            text = str(value).strip()
+            match = re.search(r"^\s*(\d+)\s*\+", text)
+
             if match:
-                try:
-                    first_number = int(match.group(1))
-                except:
-                    continue
+                first_number = int(match.group(1))
                 if first_number > 3:
                     make_auto_blue(row, col)
                     auto_blue_new_condition_rows.add(row)
@@ -362,9 +370,13 @@ if auto_blue_header_row is not None:
                 and pct2 is not None and pct2 < 0
                 and pct3 is not None and pct3 < 0
             ):
-                make_auto_blue(row, pct1_col)
-                make_auto_blue(row, pct2_col)
-                make_auto_blue(row, pct3_col)
+                # Colour all three %Chg cells light blue.
+                auto_blue_ws.cell(row, pct1_col).fill = copy(auto_blue_fill)
+                auto_blue_ws.cell(row, pct2_col).fill = copy(auto_blue_fill)
+                auto_blue_ws.cell(row, pct3_col).fill = copy(auto_blue_fill)
+
+                # This is a newly changed AutoBlue condition.
+                auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
                 auto_blue_new_condition_rows.add(row)
 
     # Only stocks triggered by the newly changed AutoBlue conditions
