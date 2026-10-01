@@ -410,31 +410,18 @@ if auto_blue_header_row is not None:
 
             auto_blue_new_match_rows.add(row)
 
-    # Column A is dark blue ONLY for rows matching ALL new conditions
-    # and having the maximum number of actual blue condition cells.
-    # Every other row has no AutoBlue Column A colour.
-    if auto_blue_new_match_rows:
-        max_new_count = max(
-            auto_blue_condition_counts.get(row, 0)
-            for row in auto_blue_new_match_rows
-        )
-
-        for row in range(
-            auto_blue_header_row + 1,
-            auto_blue_ws.max_row + 1
-        ):
-            if (
-                row in auto_blue_new_match_rows
-                and auto_blue_condition_counts.get(row, 0) == max_new_count
-            ):
-                auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
-            else:
-                auto_blue_ws.cell(row, 1).fill = PatternFill(fill_type=None)
-    else:
-        for row in range(
-            auto_blue_header_row + 1,
-            auto_blue_ws.max_row + 1
-        ):
+    # Column A is dark blue for EVERY row matching ALL new conditions.
+    # This includes rows that match only the new conditions and rows that
+    # also match the persistent AutoBlue conditions.
+    # Rows that do not satisfy ALL new conditions have no AutoBlue
+    # Column A colour.
+    for row in range(
+        auto_blue_header_row + 1,
+        auto_blue_ws.max_row + 1
+    ):
+        if row in auto_blue_new_match_rows:
+            auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
+        else:
             auto_blue_ws.cell(row, 1).fill = PatternFill(fill_type=None)
 
     auto_blue_ws.auto_filter.ref = (
