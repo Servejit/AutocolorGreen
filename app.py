@@ -237,6 +237,8 @@ if auto_blue_header_row is not None:
 
     auto_blue_fill = PatternFill(fill_type="solid", fgColor="ADD8E6")
     auto_blue_stock_fill = PatternFill(fill_type="solid", fgColor="5B9BD5")
+    auto_blue_new_stock_fill = PatternFill(fill_type="solid", fgColor="17365D")
+    auto_blue_new_condition_rows = set()
 
     def make_auto_blue(row, col):
         auto_blue_ws.cell(row, col).fill = copy(auto_blue_fill)
@@ -324,6 +326,7 @@ if auto_blue_header_row is not None:
             number = get_number(auto_blue_ws.cell(row, col).value)
             if number is not None and number < -1.5:
                 make_auto_blue(row, col)
+                auto_blue_new_condition_rows.add(row)
 
     # 10 "-ve" — first number before + > 3
     col = find_auto_blue_col('10 "-ve"')
@@ -340,6 +343,7 @@ if auto_blue_header_row is not None:
                     continue
                 if first_number > 3:
                     make_auto_blue(row, col)
+                    auto_blue_new_condition_rows.add(row)
 
     # %Chg.1 < 0
     col = find_auto_blue_col("%chg.1")
@@ -364,6 +368,12 @@ if auto_blue_header_row is not None:
             number = get_number(auto_blue_ws.cell(row, col).value)
             if number is not None and number < 0:
                 make_auto_blue(row, col)
+                auto_blue_new_condition_rows.add(row)
+
+    # Only stocks triggered by the newly changed AutoBlue conditions
+    # receive the darker blue in Column A.
+    for row in auto_blue_new_condition_rows:
+        auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
 
     auto_blue_ws.auto_filter.ref = (
         f"A{auto_blue_header_row}:"
