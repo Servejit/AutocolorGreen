@@ -389,10 +389,22 @@ if auto_blue_header_row is not None:
                 auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
                 auto_blue_new_condition_rows.add(row)
 
-    # Only stocks triggered by the newly changed AutoBlue conditions
-    # receive the darker blue in Column A.
-    for row in auto_blue_new_condition_rows:
-        auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
+    # Column A is dark blue only for matching stock(s) that satisfy
+    # at least one NEW condition and have the maximum number of
+    # matching AutoBlue conditions in their row.
+    eligible_rows = [
+        row for row in auto_blue_new_condition_rows
+        if row in auto_blue_matched_rows
+    ]
+
+    if eligible_rows:
+        max_count = max(
+            auto_blue_condition_counts.get(row, 0)
+            for row in eligible_rows
+        )
+        for row in eligible_rows:
+            if auto_blue_condition_counts.get(row, 0) == max_count:
+                auto_blue_ws.cell(row, 1).fill = copy(auto_blue_new_stock_fill)
 
     auto_blue_ws.auto_filter.ref = (
         f"A{auto_blue_header_row}:"
