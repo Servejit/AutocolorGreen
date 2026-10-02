@@ -801,6 +801,12 @@ for row, count in row_blue_counts.items():
 # ============================================================
 
 def is_auto_blue_column_a_blue(cell):
+    # AutoBlue Column A uses one of the two blue fills created above.
+    # Compare the actual fill first so Excel's internal RGB encoding
+    # cannot prevent a valid match.
+    if cell.fill == auto_blue_fill or cell.fill == auto_blue_new_stock_fill:
+        return True
+
     if cell.fill.fill_type != "solid":
         return False
 
@@ -816,22 +822,14 @@ def is_auto_blue_column_a_blue(cell):
     return False
 
 
-def is_existing_matching_row(cell):
-    if cell.fill.fill_type != "solid":
-        return False
-
-    rgb = cell.fill.fgColor.rgb
-
-    if not rgb:
-        return False
-
-    rgb = rgb.upper()
-
-    return (
-        rgb.endswith("548235")
-        or rgb.endswith("70AD47")
-        or rgb.endswith("90EE90")
-    )
+# These are the rows that the existing Run Scan logic has already
+# selected as its final green results. We use the result set itself,
+# rather than trying to infer it again from Excel's fill encoding.
+existing_matching_rows = {
+    row
+    for row, count in row_blue_counts.items()
+    if count in green_counts
+}
 
 
 current_price_col = None
@@ -868,8 +866,8 @@ if current_price_col and auto_blue_header_row is not None:
         symbol = clean_text(out_ws.cell(row, 1).value)
 
         if (
-            symbol
-            and is_existing_matching_row(out_ws.cell(row, 1))
+            row in existing_matching_rows
+            and symbol
             and symbol in auto_blue_matching_symbols
         ):
             out_ws.cell(row, current_price_col).fill = copy(
