@@ -305,7 +305,25 @@ if auto_blue_header_row is not None:
                 if parent_value < -1 and parent_value < changing_value:
                     make_auto_blue(row, col)
 
-    # 4. Sum O2H.10 — below average
+    # 4. 16>0.15 and Avg.4 — parentheses value below BOTH values
+    new_two_value_columns = []
+    for target_heading in ("16>0.15", "Avg.4"):
+        col = find_auto_blue_col(target_heading)
+        if col:
+            new_two_value_columns.append(col)
+
+    if len(new_two_value_columns) == 2:
+        for row in range(auto_blue_header_row + 1, auto_blue_ws.max_row + 1):
+            first_value = get_number(auto_blue_ws.cell(row, new_two_value_columns[0]).value)
+            second_cell_value = auto_blue_ws.cell(row, new_two_value_columns[1]).value
+            second_value = get_number(second_cell_value)
+            parent_value = get_parentheses_number(second_cell_value)
+            if (first_value is not None and second_value is not None and parent_value is not None
+                    and parent_value < first_value and parent_value < second_value):
+                for col in new_two_value_columns:
+                    make_auto_blue(row, col)
+
+    # 5. Sum O2H.10 — below average
     col = find_auto_blue_col("sum o2h.10")
     if col:
         values = []
@@ -592,6 +610,30 @@ if col_d:
 
 # ============================================================
 # RULE 4
+# 16>0.15 and Avg.4 — parentheses value below BOTH values
+# ============================================================
+
+new_two_value_columns = []
+for target_heading in ("16>0.15", "Avg.4"):
+    for col in range(1, out_ws.max_column + 1):
+        if clean_text(out_ws.cell(header_row, col).value) == clean_text(target_heading):
+            new_two_value_columns.append(col)
+            break
+
+if len(new_two_value_columns) == 2:
+    for row in range(header_row + 1, out_ws.max_row + 1):
+        first_value = get_number(out_ws.cell(row, new_two_value_columns[0]).value)
+        second_cell_value = out_ws.cell(row, new_two_value_columns[1]).value
+        second_value = get_number(second_cell_value)
+        parent_value = get_parentheses_number(second_cell_value)
+        if (first_value is not None and second_value is not None and parent_value is not None
+                and parent_value < first_value and parent_value < second_value):
+            for col in new_two_value_columns:
+                make_blue(row, col)
+
+
+# ============================================================
+# RULE 5
 # Sum O2H.10
 #
 # Values strictly below average
