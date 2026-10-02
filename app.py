@@ -774,6 +774,10 @@ eligible_counts = sorted(
 
 green_counts = eligible_counts[:3]
 
+# Keep the exact rows selected by the existing final Run Scan result.
+# This set is created before any AutoBlue post-processing.
+final_run_scan_rows = set()
+
 for row, count in row_blue_counts.items():
 
     if count < 8:
@@ -781,12 +785,15 @@ for row, count in row_blue_counts.items():
 
     if len(green_counts) >= 1 and count == green_counts[0]:
         out_ws.cell(row, 1).fill = copy(dark_green_fill)
+        final_run_scan_rows.add(row)
 
     elif len(green_counts) >= 2 and count == green_counts[1]:
         out_ws.cell(row, 1).fill = copy(green_fill)
+        final_run_scan_rows.add(row)
 
     elif len(green_counts) >= 3 and count == green_counts[2]:
         out_ws.cell(row, 1).fill = copy(light_green_fill)
+        final_run_scan_rows.add(row)
 
 
 # ============================================================
@@ -822,14 +829,9 @@ def is_auto_blue_column_a_blue(cell):
     return False
 
 
-# These are the rows that the existing Run Scan logic has already
-# selected as its final green results. We use the result set itself,
-# rather than trying to infer it again from Excel's fill encoding.
-existing_matching_rows = {
-    row
-    for row, count in row_blue_counts.items()
-    if count in green_counts
-}
+# These are the exact rows selected by the existing final Run Scan.
+# Do not recalculate or reinterpret the scan here.
+existing_matching_rows = final_run_scan_rows
 
 
 current_price_col = None
@@ -854,6 +856,7 @@ if current_price_col and auto_blue_header_row is not None:
 
         blue_a_cell = auto_blue_ws.cell(blue_row, 1)
 
+        # Column A is the ONLY AutoBlue cell used for this lookup.
         if is_auto_blue_column_a_blue(blue_a_cell):
             auto_blue_matching_symbols[symbol] = copy(
                 blue_a_cell.fill
