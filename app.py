@@ -844,6 +844,121 @@ out_wb.calculation.calcMode = "auto"
 
 
 # ============================================================
+# RUN SCAN OUTPUT — FINAL RESULTS ONLY
+# ============================================================
+# This is a separate output sheet. AutoGreen and AutoBlue are
+# not changed by this block.
+# The existing scan calculations and final row selection above
+# are reused exactly as they are.
+
+run_scan_ws = out_wb.create_sheet("Run Scan")
+
+# Copy column widths from the existing result sheet.
+for key, dimension in out_ws.column_dimensions.items():
+    run_scan_ws.column_dimensions[key].width = dimension.width
+    run_scan_ws.column_dimensions[key].hidden = dimension.hidden
+
+# Copy the header row exactly.
+for col in range(1, out_ws.max_column + 1):
+    source_cell = out_ws.cell(header_row, col)
+    target_cell = run_scan_ws.cell(1, col, value=source_cell.value)
+
+    if source_cell.has_style:
+        target_cell.font = copy(source_cell.font)
+        target_cell.fill = copy(source_cell.fill)
+        target_cell.border = copy(source_cell.border)
+        target_cell.alignment = copy(source_cell.alignment)
+        target_cell.protection = copy(source_cell.protection)
+
+    target_cell.number_format = source_cell.number_format
+
+run_scan_ws.row_dimensions[1].height = out_ws.row_dimensions[header_row].height
+
+# Find Current Price in the final output only.
+run_scan_current_price_col = None
+for col in range(1, out_ws.max_column + 1):
+    heading = clean_text(out_ws.cell(header_row, col).value)
+    if heading in {"current price", "currentprice"}:
+        run_scan_current_price_col = col
+        break
+
+# Build the AutoBlue lookup ONLY from AutoBlue Column A.
+# Nothing in AutoBlue is changed here.
+auto_blue_stock_blue_fill = {}
+
+if auto_blue_header_row is not None:
+    for blue_row in range(
+        auto_blue_header_row + 1,
+        auto_blue_ws.max_row + 1
+    ):
+        stock_name = clean_text(auto_blue_ws.cell(blue_row, 1).value)
+        if not stock_name:
+            continue
+
+        blue_cell = auto_blue_ws.cell(blue_row, 1)
+        fill_type = blue_cell.fill.fill_type
+        rgb = blue_cell.fill.fgColor.rgb
+
+        is_blue = False
+        if fill_type == "solid" and rgb:
+            rgb_upper = rgb.upper()
+            is_blue = (
+                rgb_upper.endswith("ADD8E6")
+                or rgb_upper.endswith("B4C6E7")
+            )
+
+        if is_blue:
+            auto_blue_stock_blue_fill[stock_name] = copy(blue_cell.fill)
+
+# Copy ONLY the final Run Scan rows selected by the existing logic.
+run_scan_row = 2
+for source_row in sorted(final_run_scan_rows):
+    for col in range(1, out_ws.max_column + 1):
+        source_cell = out_ws.cell(source_row, col)
+        target_cell = run_scan_ws.cell(
+            run_scan_row,
+            col,
+            value=source_cell.value
+        )
+
+        if source_cell.has_style:
+            target_cell.font = copy(source_cell.font)
+            target_cell.fill = copy(source_cell.fill)
+            target_cell.border = copy(source_cell.border)
+            target_cell.alignment = copy(source_cell.alignment)
+            target_cell.protection = copy(source_cell.protection)
+
+        target_cell.number_format = source_cell.number_format
+
+    run_scan_ws.row_dimensions[run_scan_row].height = (
+        out_ws.row_dimensions[source_row].height
+    )
+
+    # ONLY the Current Price cell is recolored in Run Scan.
+    # Match by Stock/Symbol name against AutoBlue Column A.
+    if run_scan_current_price_col is not None:
+        run_scan_stock = clean_text(out_ws.cell(source_row, 1).value)
+        if run_scan_stock in auto_blue_stock_blue_fill:
+            run_scan_ws.cell(
+                run_scan_row,
+                run_scan_current_price_col
+            ).fill = copy(auto_blue_stock_blue_fill[run_scan_stock])
+
+    run_scan_row += 1
+
+if run_scan_row > 2:
+    run_scan_ws.auto_filter.ref = (
+        f"A1:{openpyxl.utils.get_column_letter(out_ws.max_column)}"
+        f"{run_scan_row - 1}"
+    )
+    run_scan_ws.freeze_panes = "A2"
+
+# Put the actual Run Scan result first when the workbook is opened.
+out_wb._sheets.remove(run_scan_ws)
+out_wb._sheets.insert(0, run_scan_ws)
+
+
+# ============================================================
 # AUTOFILTER + FREEZE
 # ============================================================
 
