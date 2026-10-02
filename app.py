@@ -729,72 +729,6 @@ if pct2_col:
 
 
 # ============================================================
-# AUTOBLUE MATCH — CURRENT PRICE
-# ============================================================
-#
-# If the same stock/symbol exists in AutoBlue and that AutoBlue
-# row contains a blue-highlighted cell, colour the Current Price
-# cell in AutoGreen with the exact same blue fill.
-#
-# This does not change any calculation or matching condition.
-# ============================================================
-
-def is_blue_fill(cell):
-    if cell.fill.fill_type != "solid":
-        return False
-
-    color = cell.fill.fgColor
-    rgb = color.rgb
-
-    if rgb:
-        rgb = rgb.upper()
-        return rgb.endswith("ADD8E6") or rgb.endswith("B4C6E7")
-
-    return False
-
-
-current_price_col = None
-
-for col in range(1, out_ws.max_column + 1):
-    heading = clean_text(out_ws.cell(header_row, col).value)
-    if heading == "current price":
-        current_price_col = col
-        break
-
-if current_price_col and auto_blue_header_row is not None:
-    auto_blue_by_symbol = {}
-
-    for blue_row in range(
-        auto_blue_header_row + 1,
-        auto_blue_ws.max_row + 1
-    ):
-        symbol = clean_text(auto_blue_ws.cell(blue_row, 1).value)
-
-        if not symbol:
-            continue
-
-        matching_blue_fill = None
-
-        for blue_col in range(1, auto_blue_ws.max_column + 1):
-            blue_cell = auto_blue_ws.cell(blue_row, blue_col)
-
-            if is_blue_fill(blue_cell):
-                matching_blue_fill = copy(blue_cell.fill)
-                break
-
-        if matching_blue_fill is not None:
-            auto_blue_by_symbol[symbol] = matching_blue_fill
-
-    for row in range(header_row + 1, out_ws.max_row + 1):
-        symbol = clean_text(out_ws.cell(row, 1).value)
-
-        if symbol in auto_blue_by_symbol:
-            out_ws.cell(row, current_price_col).fill = copy(
-                auto_blue_by_symbol[symbol]
-            )
-
-
-# ============================================================
 # COUNT BLUE CELLS PER ROW
 # ============================================================
 
@@ -853,6 +787,94 @@ for row, count in row_blue_counts.items():
 
     elif len(green_counts) >= 3 and count == green_counts[2]:
         out_ws.cell(row, 1).fill = copy(light_green_fill)
+
+
+# ============================================================
+# AUTOBLUE MATCH — CURRENT PRICE ONLY
+# ============================================================
+#
+# Existing Run Scan / matching logic above is unchanged.
+# For stocks that have already passed the existing final
+# matching conditions (green Column A), if the same symbol
+# has a BLUE Column A cell in AutoBlue, colour ONLY its
+# Current Price cell with the exact same AutoBlue blue fill.
+# ============================================================
+
+def is_auto_blue_column_a_blue(cell):
+    if cell.fill.fill_type != "solid":
+        return False
+
+    rgb = cell.fill.fgColor.rgb
+
+    if rgb:
+        rgb = rgb.upper()
+        return (
+            rgb.endswith("ADD8E6")
+            or rgb.endswith("B4C6E7")
+        )
+
+    return False
+
+
+def is_existing_matching_row(cell):
+    if cell.fill.fill_type != "solid":
+        return False
+
+    rgb = cell.fill.fgColor.rgb
+
+    if not rgb:
+        return False
+
+    rgb = rgb.upper()
+
+    return (
+        rgb.endswith("548235")
+        or rgb.endswith("70AD47")
+        or rgb.endswith("90EE90")
+    )
+
+
+current_price_col = None
+
+for col in range(1, out_ws.max_column + 1):
+    if clean_text(out_ws.cell(header_row, col).value) == "current price":
+        current_price_col = col
+        break
+
+if current_price_col and auto_blue_header_row is not None:
+
+    auto_blue_matching_symbols = {}
+
+    for blue_row in range(
+        auto_blue_header_row + 1,
+        auto_blue_ws.max_row + 1
+    ):
+        symbol = clean_text(auto_blue_ws.cell(blue_row, 1).value)
+
+        if not symbol:
+            continue
+
+        blue_a_cell = auto_blue_ws.cell(blue_row, 1)
+
+        if is_auto_blue_column_a_blue(blue_a_cell):
+            auto_blue_matching_symbols[symbol] = copy(
+                blue_a_cell.fill
+            )
+
+    for row in range(
+        header_row + 1,
+        out_ws.max_row + 1
+    ):
+        symbol = clean_text(out_ws.cell(row, 1).value)
+
+        if (
+            symbol
+            and is_existing_matching_row(out_ws.cell(row, 1))
+            and symbol in auto_blue_matching_symbols
+        ):
+            out_ws.cell(row, current_price_col).fill = copy(
+                auto_blue_matching_symbols[symbol]
+            )
 
 
 # ============================================================
