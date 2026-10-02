@@ -31,18 +31,15 @@ def clean_text(value):
     text = text.replace("\u200b", "")
     text = text.replace("\u200c", "")
     text = text.replace("\u200d", "")
-    text = re.sub(r"\s+",
-                  " ", text)
+    text = re.sub(r"\s+", " ", text)
     return text.strip().lower()
 
 
 def get_number(value):
     if value is None:
         return None
-
     if isinstance(value, bool):
         return None
-
     if isinstance(value, (int, float)):
         return float(value)
 
@@ -73,33 +70,6 @@ def get_parentheses_number(value):
             return None
 
     return None
-
-
-def get_number_before_parentheses(value):
-    if value is None:
-        return None
-
-    if isinstance(value, bool):
-        return None
-
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    text = str(value).strip()
-    text = text.replace(",", "").replace("%", "")
-
-    match = re.search(
-        r"([-+]?\d+(?:\.\d+)?)\s*\(",
-        text
-    )
-
-    if match:
-        try:
-            return float(match.group(1))
-        except:
-            return None
-
-    return get_number(value)
 
 
 # ============================================================
@@ -153,7 +123,8 @@ out_ws.title = "AutoGreen"
 # COPY VALUES + FORMATTING
 # ============================================================
 
-for row in value_ws.iter_rows:
+# IMPORTANT: iter_rows() must be called as a method.
+for row in value_ws.iter_rows():
     for value_cell in row:
         r = value_cell.row
         c = value_cell.column
@@ -366,7 +337,7 @@ if auto_blue_header_row is not None:
                 if number is not None and number < average_value:
                     make_auto_blue(row, col)
 
-    # 7. New AutoBlue gate
+    # 7. AutoBlue gate
     dated_o2l_columns = []
     for col in range(1, auto_blue_ws.max_column + 1):
         heading = normalize_auto_blue_heading(
@@ -401,7 +372,11 @@ if auto_blue_header_row is not None:
         if negative_col:
             value = auto_blue_ws.cell(row, negative_col).value
             if value is not None:
-                match = re.match(r"^\s*(\d+)\s*+", str(value).strip())
+                # Correctly require a literal + after the first number.
+                match = re.match(
+                    r"^\s*(\d+)\s*\+",
+                    str(value).strip()
+                )
                 neg_ok = bool(match and int(match.group(1)) > 3)
 
         pct_ok = False
@@ -410,14 +385,20 @@ if auto_blue_header_row is not None:
                 get_number(auto_blue_ws.cell(row, col).value)
                 for col in (pct1_col, pct2_col, pct3_col)
             ]
-            pct_ok = all(value is not None and value < 0 for value in pct_values)
+            pct_ok = all(
+                value is not None and value < 0
+                for value in pct_values
+            )
 
         if o2l_ok and neg_ok and pct_ok:
             for col in first_two_o2l:
                 make_auto_blue(row, col)
+
             make_auto_blue(row, negative_col)
+
             for col in (pct1_col, pct2_col, pct3_col):
                 make_auto_blue(row, col)
+
             auto_blue_new_match_rows.add(row)
 
     for row in range(
@@ -444,6 +425,7 @@ if auto_blue_header_row is not None:
 blue_fill = PatternFill(fill_type="solid", fgColor="ADD8E6")
 blue_cells = set()
 
+
 def make_blue(row, col):
     out_ws.cell(row, col).fill = copy(blue_fill)
     blue_cells.add((row, col))
@@ -467,6 +449,7 @@ for col in range(1, out_ws.max_column + 1):
 # ============================================================
 
 sum_i_col = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "sum i":
         sum_i_col = col
@@ -484,6 +467,7 @@ if sum_i_col:
 # ============================================================
 
 col_c = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "16> c-b / avg.4":
         col_c = col
@@ -491,7 +475,10 @@ for col in range(1, out_ws.max_column + 1):
 
 if col_c:
     for row in range(header_row + 1, out_ws.max_row + 1):
-        value = get_parentheses_number(out_ws.cell(row, col_c).value)
+        value = get_parentheses_number(
+            out_ws.cell(row, col_c).value
+        )
+
         if value is not None and value < 0.50:
             make_blue(row, col_c)
 
@@ -501,6 +488,7 @@ if col_c:
 # ============================================================
 
 col_d = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "16< d-b / avg.4":
         col_d = col
@@ -509,15 +497,18 @@ for col in range(1, out_ws.max_column + 1):
 if col_d:
     for row in range(header_row + 1, out_ws.max_row + 1):
         cell_value = out_ws.cell(row, col_d).value
+
         if cell_value is None:
             continue
 
         text = str(cell_value)
+
         first_match = re.search(
             r"16<\s*([-+]?\d+(?:\.\d+)?)",
             text,
             re.IGNORECASE
         )
+
         parent_value = get_parentheses_number(cell_value)
 
         if first_match and parent_value is not None:
@@ -531,10 +522,17 @@ if col_d:
 
 
 # ============================================================
-# RULE 4 — Avg.4 O2H (set 2) and Avg.4 O2H (set 3)
+# RULE 4 — NEW SET 2 / SET 3 CONDITION
 #
-# Both values must be greater than the value inside ( )
-# in 16> C-B / Avg.4. Both cells turn blue.
+# Avg.4 O2H (set 2) > value inside ( )
+# of 16> C-B / Avg.4
+#
+# AND
+#
+# Avg.4 O2H (set 3) > value inside ( )
+# of 16> C-B / Avg.4
+#
+# When BOTH are true, BOTH cells become blue.
 # ============================================================
 
 set2_col = None
@@ -551,6 +549,7 @@ for col in range(1, out_ws.max_column + 1):
 
 if col_c and set2_col and set3_col:
     for row in range(header_row + 1, out_ws.max_row + 1):
+
         c_b_parent = get_parentheses_number(
             out_ws.cell(row, col_c).value
         )
@@ -579,6 +578,7 @@ if col_c and set2_col and set3_col:
 # ============================================================
 
 sum_o2h_col = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "sum o2h.10":
         sum_o2h_col = col
@@ -586,8 +586,10 @@ for col in range(1, out_ws.max_column + 1):
 
 if sum_o2h_col:
     values = []
+
     for row in range(header_row + 1, out_ws.max_row + 1):
         number = get_number(out_ws.cell(row, sum_o2h_col).value)
+
         if number is not None:
             values.append(number)
 
@@ -595,7 +597,10 @@ if sum_o2h_col:
         average_value = sum(values) / len(values)
 
         for row in range(header_row + 1, out_ws.max_row + 1):
-            number = get_number(out_ws.cell(row, sum_o2h_col).value)
+            number = get_number(
+                out_ws.cell(row, sum_o2h_col).value
+            )
+
             if number is not None and number < average_value:
                 make_blue(row, sum_o2h_col)
 
@@ -605,6 +610,7 @@ if sum_o2h_col:
 # ============================================================
 
 sum_o2l_col = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "sum o2l.10":
         sum_o2l_col = col
@@ -612,8 +618,10 @@ for col in range(1, out_ws.max_column + 1):
 
 if sum_o2l_col:
     values = []
+
     for row in range(header_row + 1, out_ws.max_row + 1):
         number = get_number(out_ws.cell(row, sum_o2l_col).value)
+
         if number is not None:
             values.append(number)
 
@@ -621,7 +629,10 @@ if sum_o2l_col:
         average_value = sum(values) / len(values)
 
         for row in range(header_row + 1, out_ws.max_row + 1):
-            number = get_number(out_ws.cell(row, sum_o2l_col).value)
+            number = get_number(
+                out_ws.cell(row, sum_o2l_col).value
+            )
+
             if number is not None and number < average_value:
                 make_blue(row, sum_o2l_col)
 
@@ -641,6 +652,7 @@ for col in range(1, out_ws.max_column + 1):
 for col in dated_o2l_columns[:2]:
     for row in range(header_row + 1, out_ws.max_row + 1):
         number = get_number(out_ws.cell(row, col).value)
+
         if number is not None and number < -1:
             make_blue(row, col)
 
@@ -659,10 +671,14 @@ for col in range(1, out_ws.max_column + 1):
 if negative_col:
     for row in range(header_row + 1, out_ws.max_row + 1):
         value = out_ws.cell(row, negative_col).value
+
         if value is None:
             continue
 
-        match = re.match(r"^\s*(\d+)\s*\+", str(value).strip())
+        match = re.match(
+            r"^\s*(\d+)\s*\+",
+            str(value).strip()
+        )
 
         if match:
             try:
@@ -679,6 +695,7 @@ if negative_col:
 # ============================================================
 
 pct1_col = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "%chg.1":
         pct1_col = col
@@ -687,6 +704,7 @@ for col in range(1, out_ws.max_column + 1):
 if pct1_col:
     for row in range(header_row + 1, out_ws.max_row + 1):
         number = get_number(out_ws.cell(row, pct1_col).value)
+
         if number is not None and number < 0:
             make_blue(row, pct1_col)
 
@@ -696,6 +714,7 @@ if pct1_col:
 # ============================================================
 
 pct2_col = None
+
 for col in range(1, out_ws.max_column + 1):
     if clean_text(out_ws.cell(header_row, col).value) == "%chg.2":
         pct2_col = col
@@ -704,6 +723,7 @@ for col in range(1, out_ws.max_column + 1):
 if pct2_col:
     for row in range(header_row + 1, out_ws.max_row + 1):
         number = get_number(out_ws.cell(row, pct2_col).value)
+
         if number is not None and number < 0:
             make_blue(row, pct2_col)
 
@@ -720,6 +740,7 @@ for row in range(header_row + 1, out_ws.max_row + 1):
         for r, c in blue_cells
         if r == row and c != 1
     )
+
     row_blue_counts[row] = count
 
 
@@ -727,9 +748,20 @@ for row in range(header_row + 1, out_ws.max_row + 1):
 # THREE GREEN LEVELS
 # ============================================================
 
-dark_green_fill = PatternFill(fill_type="solid", fgColor="548235")
-green_fill = PatternFill(fill_type="solid", fgColor="70AD47")
-light_green_fill = PatternFill(fill_type="solid", fgColor="90EE90")
+dark_green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="548235"
+)
+
+green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="70AD47"
+)
+
+light_green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="90EE90"
+)
 
 eligible_counts = sorted(
     {
@@ -743,6 +775,7 @@ eligible_counts = sorted(
 green_counts = eligible_counts[:3]
 
 for row, count in row_blue_counts.items():
+
     if count < 8:
         continue
 
@@ -774,7 +807,9 @@ out_ws.freeze_panes = f"A{header_row + 1}"
 # ============================================================
 
 output_buffer = io.BytesIO()
+
 out_wb.save(output_buffer)
+
 output_buffer.seek(0)
 
 st.success("Excel file processed successfully.")
