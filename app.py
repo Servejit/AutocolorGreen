@@ -2,6 +2,7 @@ import streamlit as st
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
+from openpyxl.formatting.rule import FormulaRule
 from copy import copy
 import re
 import io
@@ -774,8 +775,8 @@ eligible_counts = sorted(
 
 green_counts = eligible_counts[:3]
 
-# Keep the exact rows selected by the existing final Run Scan result.
-# This set is created before any AutoBlue post-processing.
+# Keep the existing three-level selection exactly as before.
+# The only visual change is the Stock Name / Column A flash effect.
 final_run_scan_rows = set()
 
 for row, count in row_blue_counts.items():
@@ -797,85 +798,49 @@ for row, count in row_blue_counts.items():
 
 
 # ============================================================
-# AUTOBLUE MATCH — CURRENT PRICE ONLY
+# STOCK NAME — GREEN / BLUE FLASH EFFECT
 # ============================================================
-#
-# Existing Run Scan / matching logic above is unchanged.
-# For stocks that have already passed the existing final
-# matching conditions (green Column A), if the same symbol
-# has a BLUE Column A cell in AutoBlue, colour ONLY its
-# Current Price cell with the exact same AutoBlue blue fill.
-# ============================================================
+# An .xlsx file cannot run a continuous VBA animation.
+# Conditional formatting is therefore used so the selected
+# Stock Name cells alternate green/blue whenever Excel
+# recalculates the volatile NOW() formula.
+# No scan condition or calculation is changed.
 
-def is_auto_blue_column_a_blue(cell):
-    # AutoBlue Column A uses one of the two blue fills created above.
-    # Compare the actual fill first so Excel's internal RGB encoding
-    # cannot prevent a valid match.
-    if cell.fill == auto_blue_fill or cell.fill == auto_blue_new_stock_fill:
-        return True
+flash_green_fill = PatternFill(
+    fill_type="solid",
+    fgColor="70AD47"
+)
 
-    if cell.fill.fill_type != "solid":
-        return False
+flash_blue_fill = PatternFill(
+    fill_type="solid",
+    fgColor="ADD8E6"
+)
 
-    rgb = cell.fill.fgColor.rgb
+for row in sorted(final_run_scan_rows):
+    cell_ref = out_ws.cell(row, 1).coordinate
 
-    if rgb:
-        rgb = rgb.upper()
-        return (
-            rgb.endswith("ADD8E6")
-            or rgb.endswith("B4C6E7")
+    out_ws.conditional_formatting.add(
+        cell_ref,
+        FormulaRule(
+            formula=["MOD(SECOND(NOW()),2)=0"],
+            fill=copy(flash_green_fill),
+            stopIfTrue=True
         )
+    )
 
-    return False
+    out_ws.conditional_formatting.add(
+        cell_ref,
+        FormulaRule(
+            formula=["MOD(SECOND(NOW()),2)=1"],
+            fill=copy(flash_blue_fill),
+            stopIfTrue=True
+        )
+    )
 
-
-# These are the exact rows selected by the existing final Run Scan.
-# Do not recalculate or reinterpret the scan here.
-existing_matching_rows = final_run_scan_rows
-
-
-current_price_col = None
-
-for col in range(1, out_ws.max_column + 1):
-    if clean_text(out_ws.cell(header_row, col).value) == "current price":
-        current_price_col = col
-        break
-
-if current_price_col and auto_blue_header_row is not None:
-
-    auto_blue_matching_symbols = {}
-
-    for blue_row in range(
-        auto_blue_header_row + 1,
-        auto_blue_ws.max_row + 1
-    ):
-        symbol = clean_text(auto_blue_ws.cell(blue_row, 1).value)
-
-        if not symbol:
-            continue
-
-        blue_a_cell = auto_blue_ws.cell(blue_row, 1)
-
-        # Column A is the ONLY AutoBlue cell used for this lookup.
-        if is_auto_blue_column_a_blue(blue_a_cell):
-            auto_blue_matching_symbols[symbol] = copy(
-                blue_a_cell.fill
-            )
-
-    for row in range(
-        header_row + 1,
-        out_ws.max_row + 1
-    ):
-        symbol = clean_text(out_ws.cell(row, 1).value)
-
-        if (
-            row in existing_matching_rows
-            and symbol
-            and symbol in auto_blue_matching_symbols
-        ):
-            out_ws.cell(row, current_price_col).fill = copy(
-                auto_blue_matching_symbols[symbol]
-            )
+# Ask Excel to recalculate volatile formulas when the workbook opens.
+out_wb.calculation.fullCalcOnLoad = True
+out_wb.calculation.forceFullCalc = True
+out_wb.calculation.calcMode = "auto"
 
 
 # ============================================================
