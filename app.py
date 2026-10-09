@@ -198,6 +198,51 @@ if header_row is None:
 
 
 # ============================================================
+# A1 LABEL — AVERAGE OF VALUES AFTER "16>" IN C-B / AVG.4
+# Rows 2 through 211 are included, ignoring cells without a
+# numeric value immediately after "16>".
+# ============================================================
+
+c_b_average_col = None
+
+for col in range(1, out_ws.max_column + 1):
+    if clean_text(out_ws.cell(header_row, col).value) == "16> c-b / avg.4":
+        c_b_average_col = col
+        break
+
+if c_b_average_col:
+    c_b_x_values = []
+
+    for row in range(2, min(211, out_ws.max_row) + 1):
+        cell_value = out_ws.cell(row, c_b_average_col).value
+
+        if cell_value is None:
+            continue
+
+        match = re.search(
+            r"16>\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            str(cell_value),
+            re.IGNORECASE
+        )
+
+        if match:
+            try:
+                c_b_x_values.append(float(match.group(1)))
+            except (TypeError, ValueError):
+                pass
+
+    if c_b_x_values:
+        c_b_average = sum(c_b_x_values) / len(c_b_x_values)
+        current_a1 = out_ws["A1"].value
+        base_a1 = "" if current_a1 is None else str(current_a1).strip()
+
+        # Avoid adding the average twice if the app is run on an
+        # already-labelled workbook.
+        base_a1 = re.sub(r"\\s*\\([-+]?\\d+(?:\\.\\d+)?\\)\\s*$", "", base_a1)
+        out_ws["A1"] = f"{base_a1} ({c_b_average:.2f})" if base_a1 else f"({c_b_average:.2f})"
+
+
+# ============================================================
 # AUTOBLUE SHEET
 # ============================================================
 
