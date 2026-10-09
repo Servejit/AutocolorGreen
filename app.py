@@ -223,7 +223,7 @@ if average_heading_col is not None:
         # Cells can contain text such as "16>3.25" or "16> 3.25 (...)";
         # extract the numeric x immediately after the 16> marker.
         match = re.search(
-            r"16>\\s*([-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+))",
+            r"16>\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))",
             str(cell_value),
             re.IGNORECASE
         )
@@ -240,7 +240,7 @@ if x_values:
     # Preserve the Symbol header if it is actually in A1.
     if clean_text(original_a1) != "symbol":
         original_a1 = re.sub(
-            r"\\s*\\([-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)\\)\\s*$",
+            r"\s*\([-+]?(?:\d+(?:\.\d*)?|\.\d+)\)\s*$",
             "",
             original_a1
         ).strip()
