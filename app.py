@@ -182,6 +182,49 @@ auto_blue_ws.title = "AutoBlue"
 
 
 # ============================================================
+# A1 LABEL — APPEND AVERAGE OF x VALUES FROM 16> C-B / Avg.4
+# Rows 2:211 are used exactly as requested. Only the A1 label changes.
+# ============================================================
+
+average_heading_col = None
+for col in range(1, out_ws.max_column + 1):
+    if clean_text(out_ws.cell(1, col).value) == "16> c-b / avg.4":
+        average_heading_col = col
+        break
+
+# The heading may be on a later row in workbooks that include a title row.
+if average_heading_col is None:
+    for scan_row in range(2, min(out_ws.max_row, 20) + 1):
+        for col in range(1, out_ws.max_column + 1):
+            if clean_text(out_ws.cell(scan_row, col).value) == "16> c-b / avg.4":
+                average_heading_col = col
+                break
+        if average_heading_col is not None:
+            break
+
+if average_heading_col is not None:
+    x_values = []
+    for scan_row in range(2, min(211, out_ws.max_row) + 1):
+        cell_value = out_ws.cell(scan_row, average_heading_col).value
+        if cell_value is None:
+            continue
+        match = re.search(r"16>\\s*([-+]?\\d+(?:\\.\\d+)?)", str(cell_value), re.IGNORECASE)
+        if match:
+            try:
+                x_values.append(float(match.group(1)))
+            except (TypeError, ValueError):
+                pass
+
+    if x_values:
+        x_average = sum(x_values) / len(x_values)
+        original_a1 = str(out_ws["A1"].value or "").strip()
+        # Avoid duplicating the suffix if the uploaded workbook already contains one.
+        original_a1 = re.sub(r"\\s*\\([-+]?\\d+(?:\\.\\d+)?\\)\\s*$", "", original_a1)
+        out_ws["A1"] = f"{original_a1} ({x_average:.2f})" if original_a1 else f"({x_average:.2f})"
+        auto_blue_ws["A1"] = out_ws["A1"].value
+
+
+# ============================================================
 # FIND HEADER ROW
 # ============================================================
 
