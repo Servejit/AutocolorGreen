@@ -241,6 +241,23 @@ if c_b_average_col:
         base_a1 = re.sub(r"\s*\([-+]?\d+(?:\.\d+)?\)\s*$", "", base_a1)
         out_ws["A1"] = f"{base_a1} ({c_b_average:.2f})" if base_a1 else f"({c_b_average:.2f})"
 
+        # Apply the same A1 label to the AutoBlue sheet as well.
+        auto_blue_current_a1 = auto_blue_ws["A1"].value
+        auto_blue_base_a1 = (
+            "" if auto_blue_current_a1 is None
+            else str(auto_blue_current_a1).strip()
+        )
+        auto_blue_base_a1 = re.sub(
+            r"\s*\([-+]?\d+(?:\.\d+)?\)\s*$",
+            "",
+            auto_blue_base_a1
+        )
+        auto_blue_ws["A1"] = (
+            f"{auto_blue_base_a1} ({c_b_average:.2f})"
+            if auto_blue_base_a1
+            else f"({c_b_average:.2f})"
+        )
+
 
 # ============================================================
 # AUTOBLUE SHEET
