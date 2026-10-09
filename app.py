@@ -220,7 +220,7 @@ if c_b_average_col:
             continue
 
         match = re.search(
-            r"16>\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            r"16>\s*([-+]?\d+(?:\.\d+)?)",
             str(cell_value),
             re.IGNORECASE
         )
@@ -238,7 +238,7 @@ if c_b_average_col:
 
         # Avoid adding the average twice if the app is run on an
         # already-labelled workbook.
-        base_a1 = re.sub(r"\\s*\\([-+]?\\d+(?:\\.\\d+)?\\)\\s*$", "", base_a1)
+        base_a1 = re.sub(r"\s*\([-+]?\d+(?:\.\d+)?\)\s*$", "", base_a1)
         out_ws["A1"] = f"{base_a1} ({c_b_average:.2f})" if base_a1 else f"({c_b_average:.2f})"
 
 
