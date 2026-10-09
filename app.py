@@ -218,7 +218,7 @@ if average_heading_col is not None:
         cell_value = out_ws.cell(scan_row, average_heading_col).value
         if cell_value is None:
             continue
-        match = re.search(r"16>\\s*([-+]?\\d+(?:\\.\\d+)?)", str(cell_value), re.IGNORECASE)
+        match = re.search(r"16>\s*([-+]?\d+(?:\.\d+)?)", str(cell_value), re.IGNORECASE)
         if match:
             try:
                 x_values.append(float(match.group(1)))
@@ -229,7 +229,7 @@ if average_heading_col is not None:
         x_average = sum(x_values) / len(x_values)
         original_a1 = str(out_ws["A1"].value or "").strip()
         if clean_text(original_a1) != "symbol":
-            original_a1 = re.sub(r"\\s*\\([-+]?\\d+(?:\\.\\d+)?\\)\\s*$", "", original_a1)
+            original_a1 = re.sub(r"\s*\([-+]?\d+(?:\.\d+)?\)\s*$", "", original_a1)
             updated_a1 = f"{original_a1} ({x_average:.2f})" if original_a1 else f"({x_average:.2f})"
             out_ws["A1"] = updated_a1
             auto_blue_ws["A1"] = updated_a1
