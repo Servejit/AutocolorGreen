@@ -198,16 +198,15 @@ if header_row is None:
 
 
 # ============================================================
-# A1 LABEL — APPEND AVERAGE OF x VALUES FROM 16> C-B / Avg.4
-# Read the heading anywhere in the sheet; average numeric x values
-# from worksheet rows 2 through 211.
+# ============================================================
+# A1 LABEL — SHOW SYMBOL (AVERAGE OF x)
+# Average x values from rows 2:211 under the matching heading.
 # ============================================================
 
 average_heading_col = None
 for scan_row in range(1, out_ws.max_row + 1):
     for col in range(1, out_ws.max_column + 1):
-        heading = clean_text(out_ws.cell(scan_row, col).value)
-        if heading == "16> c-b / avg.4":
+        if clean_text(out_ws.cell(scan_row, col).value) == '16> c-b / avg.4':
             average_heading_col = col
             break
     if average_heading_col is not None:
@@ -219,14 +218,7 @@ if average_heading_col is not None:
         cell_value = out_ws.cell(scan_row, average_heading_col).value
         if cell_value is None:
             continue
-
-        # Cells can contain text such as "16>3.25" or "16> 3.25 (...)";
-        # extract the numeric x immediately after the 16> marker.
-        match = re.search(
-            r"16>\s*([-+]?(?:\d+(?:\.\d*)?|\.\d+))",
-            str(cell_value),
-            re.IGNORECASE
-        )
+        match = re.search('16>\\s*([-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+))', str(cell_value), re.IGNORECASE)
         if match:
             try:
                 x_values.append(float(match.group(1)))
@@ -235,28 +227,11 @@ if average_heading_col is not None:
 
 if x_values:
     x_average = sum(x_values) / len(x_values)
-    original_a1 = str(out_ws["A1"].value or "").strip()
-
-    # Preserve the Symbol header if it is actually in A1.
-    if clean_text(original_a1) != "symbol":
-        original_a1 = re.sub(
-            r"\s*\([-+]?(?:\d+(?:\.\d*)?|\.\d+)\)\s*$",
-            "",
-            original_a1
-        ).strip()
-        updated_a1 = (
-            f"{original_a1} ({x_average:.2f})"
-            if original_a1
-            else f"({x_average:.2f})"
-        )
-        out_ws["A1"] = updated_a1
-        auto_blue_ws["A1"] = updated_a1
+    updated_a1 = f'Symbol ({x_average:.2f})'
+    out_ws['A1'] = updated_a1
+    auto_blue_ws['A1'] = updated_a1
 else:
-    st.warning(
-        "Average was not added to A1 because the '16> C-B / Avg.4' "
-        "heading or numeric x values in rows 2–211 were not found."
-    )
-
+    st.warning('A1 was not updated: no numeric x values were found under 16> C-B / Avg.4 in rows 2–211.')
 
 # ============================================================
 # AUTOBLUE SHEET
@@ -265,7 +240,7 @@ else:
 auto_blue_header_row = None
 
 for row in range(1, auto_blue_ws.max_row + 1):
-    if clean_text(auto_blue_ws.cell(row, 1).value) == "symbol":
+    if clean_text(auto_blue_ws.cell(row, 1).value).startswith("symbol"):
         auto_blue_header_row = row
         break
 
